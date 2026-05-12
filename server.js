@@ -8,13 +8,12 @@ app.use(cors());
 app.use(express.json());
 
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'pohomov38',
-    database: 'VitalSync_Project',
+    host: 'sql.zzz.com.ua',
+    user: 'vitalsync_db', 
+    password: 'ТВОЙ_ПАРОЛЬ_ОТ_БАЗЫ',
+    database: 'vitalsync_db',
     charset: 'utf8mb4'
 });
-
 db.connect(err => {
     if (err) console.error('Помилка підключення до MySQL:', err);
     else console.log('Підключено до бази VitalSync (SQL Ready)');
