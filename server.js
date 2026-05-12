@@ -7,27 +7,60 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ПІДКЛЮЧЕННЯ ДО БАЗИ (ZZZ.COM.UA)
+// ПІДКЛЮЧЕННЯ ДО БАЗИ (AIVEN CLOUD)
 const db = mysql.createConnection({
-    host: 'sql.zzz.com.ua',
-    user: 'vitalsync_db',
-    password: 'Pohomov389', 
-    database: 'vitalsync_db',
-    charset: 'utf8mb4'
+    host: 'mysql-3243f173-pakhomov-v-v-3031.l.aivencloud.com',
+    port: 28834,
+    user: 'avnadmin',
+    password: 'AVNS_v4I6Upq_vHI7EXoiut2', // Пароль підставлено
+    database: 'defaultdb',
+    ssl: {
+        rejectUnauthorized: false
+    },
+    multipleStatements: true // Дозволяє виконувати кілька запитів одночасно (потрібно для ініціалізації)
 });
 
 db.connect(err => {
     if (err) {
         console.error('Помилка підключення до MySQL:', err);
     } else {
-        console.log('Підключено до бази VitalSync на ZZZ (SQL Ready)');
+        console.log('Підключено до хмарної бази VitalSync на Aiven');
+
+        // АВТОМАТИЧНЕ СТВОРЕННЯ ТАБЛИЦЬ ПРИ ЗАПУСКУ
+        const initSql = `
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            login VARCHAR(255) NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            UNIQUE KEY (login)
+        );
+
+        CREATE TABLE IF NOT EXISTS health_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT,
+            weight FLOAT,
+            height FLOAT,
+            distance_km FLOAT,
+            sleep_hours FLOAT,
+            water_liters FLOAT,
+            calories_intake INT,
+            kcal_target INT,
+            date_recorded DATE,
+            bmi FLOAT,
+            UNIQUE KEY (user_id, date_recorded),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );`;
+
+        db.query(initSql, (err) => {
+            if (err) console.error('Помилка створення таблиць:', err);
+            else console.log('Таблиці перевірено/створено успішно');
+        });
     }
 });
 
 // РЕЄСТРАЦІЯ ТА ВХІД
 app.post('/api/register', (req, res) => {
     const { login, password } = req.body;
-    // Використовуємо маленькі літери для таблиці users
     db.query("SELECT * FROM users WHERE login = ?", [login], (err, results) => {
         if (err) return res.status(500).json({ error: "Помилка бази даних" });
 
