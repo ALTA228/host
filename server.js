@@ -7,7 +7,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Ï²ÄÊËŞ×ÅÍÍß ÄÎ ÁÀÇÈ (AIVEN CLOUD)
 const db = mysql.createConnection({
     host: 'vitalsync-db228-pohomov38-5ea8.h.aivencloud.com',
     port: 14787,
@@ -15,7 +14,7 @@ const db = mysql.createConnection({
     password: 'AVNS_v4I6Upq_vHI7EXoiut2',
     database: 'defaultdb',
     ssl: {
-        rejectUnauthorized: false, // ÒÓÒ ÁÓËÀ ÏÎÌÈËÊÀ (äîäàíî êîìó)
+        rejectUnauthorized: false,
         connectTimeout: 20000
     },
     multipleStatements: true
