@@ -16,6 +16,7 @@ const db = mysql.createConnection({
     database: 'defaultdb',
     ssl: {
         rejectUnauthorized: false
+        connectTimeout: 20000
     },
     multipleStatements: true // Дозволяє виконувати кілька запитів одночасно (потрібно для ініціалізації)
 });
