@@ -9,7 +9,7 @@ app.use(express.json());
 
 // Ï²ÄÊËŞ×ÅÍÍß ÄÎ ÁÀÇÈ (AIVEN CLOUD)
 const db = mysql.createConnection({
-    host: 'mysql-3243f173-pakhomov-v-v-3031.l.aivencloud.com',
+    host: 'vitalsync-db228-pohomov38-5ea8.h.aivencloud.com',
     port: 28834,
     user: 'avnadmin',
     password: 'AVNS_v4I6Upq_vHI7EXoiut2',
