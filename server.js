@@ -7,21 +7,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ПІДКЛЮЧЕННЯ ДО БАЗИ (ZZZ.COM.UA)
 const db = mysql.createConnection({
     host: 'sql.zzz.com.ua',
-    user: 'vitalsync_db', 
-    password: 'ТВОЙ_ПАРОЛЬ_ОТ_БАЗЫ',
+    user: 'vitalsync_db',
+    password: 'Pohomov389', 
     database: 'vitalsync_db',
     charset: 'utf8mb4'
 });
+
 db.connect(err => {
-    if (err) console.error('Помилка підключення до MySQL:', err);
-    else console.log('Підключено до бази VitalSync (SQL Ready)');
+    if (err) {
+        console.error('Помилка підключення до MySQL:', err);
+    } else {
+        console.log('Підключено до бази VitalSync на ZZZ (SQL Ready)');
+    }
 });
 
+// РЕЄСТРАЦІЯ ТА ВХІД
 app.post('/api/register', (req, res) => {
     const { login, password } = req.body;
-    db.query("SELECT * FROM Users WHERE login = ?", [login], (err, results) => {
+    // Використовуємо маленькі літери для таблиці users
+    db.query("SELECT * FROM users WHERE login = ?", [login], (err, results) => {
         if (err) return res.status(500).json({ error: "Помилка бази даних" });
 
         if (results.length > 0) {
@@ -31,7 +38,7 @@ app.post('/api/register', (req, res) => {
                 return res.status(401).json({ error: "Невірний пароль" });
             }
         } else {
-            db.query("INSERT INTO Users (login, password) VALUES (?, ?)", [login, password], (err, result) => {
+            db.query("INSERT INTO users (login, password) VALUES (?, ?)", [login, password], (err, result) => {
                 if (err) return res.status(500).json({ error: "Помилка створення юзера" });
                 res.json({ success: true, userId: result.insertId });
             });
@@ -39,10 +46,11 @@ app.post('/api/register', (req, res) => {
     });
 });
 
+// ОТРИМАННЯ ДАНИХ ДЛЯ ПРОФІЛЮ
 app.get('/api/dashboard/:id', (req, res) => {
     const userId = req.params.id;
     const sql = `
-        SELECT u.login, h.* FROM Users u
+        SELECT u.login, h.* FROM users u
         LEFT JOIN health_logs h ON u.id = h.user_id
         WHERE u.id = ?
         ORDER BY h.id DESC LIMIT 1`;
@@ -56,6 +64,8 @@ app.get('/api/dashboard/:id', (req, res) => {
         }
     });
 });
+
+// ОНОВЛЕННЯ БІОМЕТРІЇ
 app.post('/api/update', (req, res) => {
     const { userId, weight, height, steps, sleep, water, kcal, kcalTarget, bmi } = req.body;
     const today = new Date().toISOString().slice(0, 10);
@@ -83,6 +93,7 @@ app.post('/api/update', (req, res) => {
     });
 });
 
+// ІСТОРІЯ ЛОГІВ
 app.get('/api/history/:userId', (req, res) => {
     const userId = req.params.userId;
     const sql = "SELECT * FROM health_logs WHERE user_id = ? ORDER BY date_recorded DESC";
@@ -92,4 +103,6 @@ app.get('/api/history/:userId', (req, res) => {
     });
 });
 
-app.listen(3000, () => console.log('Сервер VitalSync працює на порту 3000'));
+// ЗАПУСК СЕРВЕРА
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Сервер VitalSync працює на порту ${PORT}`));
