@@ -3,8 +3,6 @@ const mysql = require('mysql2');
 const cors = require('cors');
 
 const app = express();
-
-// Мідлвари
 app.use(cors());
 app.use(express.json());
 
@@ -28,7 +26,7 @@ function handleDisconnect() {
     db.connect(err => {
         if (err) {
             console.error('❌ ПОМИЛКА ПІДКЛЮЧЕННЯ ДО БАЗИ:', err.message);
-            setTimeout(handleDisconnect, 2000); // Пробуємо підключитися знову через 2 сек
+            setTimeout(handleDisconnect, 2000);
         } else {
             console.log('✅ VitalSync: Хмарна база Aiven на зв’язку!');
             initializeDatabase();
@@ -36,7 +34,6 @@ function handleDisconnect() {
     });
 
     db.on('error', err => {
-        console.error('⚠️ ПОМИЛКА БАЗИ ДАНИХ:', err.message);
         if (err.code === 'PROTOCOL_CONNECTION_LOST') {
             handleDisconnect();
         } else {
@@ -65,7 +62,7 @@ function initializeDatabase() {
 
     db.query(initSql, (err) => {
         if (err) console.error('❌ ПОМИЛКА ІНІЦІАЛІЗАЦІЇ ТАБЛИЦЬ:', err.message);
-        else console.log('🚀 СТРУКТУРА VitalSync ГОТОВА: Таблиці перевірено.');
+        else console.log('🚀 СТРУКТУРА VitalSync ГОТОВА!');
     });
 }
 
@@ -73,17 +70,14 @@ handleDisconnect();
 
 // --- API МАРШРУТИ ---
 
-// Реєстрація та логін (2-в-1)
+// Реєстрація та логін
 app.post('/api/register', (req, res) => {
     const { login, password } = req.body;
-    console.log(`👤 Запит для користувача: ${login}`);
-
     db.query("SELECT * FROM users WHERE login = ?", [login], (err, results) => {
-        if (err) return res.status(500).json({ error: "Помилка бази", details: err.message });
+        if (err) return res.status(500).json({ error: "Помилка бази" });
 
         if (results.length > 0) {
             if (results[0].password === password) {
-                console.log(`🔑 Успішний вхід: ${login}`);
                 return res.json({ success: true, userId: results[0].id });
             } else {
                 return res.status(401).json({ error: "Невірний пароль" });
@@ -91,14 +85,13 @@ app.post('/api/register', (req, res) => {
         } else {
             db.query("INSERT INTO users (login, password) VALUES (?, ?)", [login, password], (err, result) => {
                 if (err) return res.status(500).json({ error: "Помилка створення акаунта" });
-                console.log(`🆕 Створено нового атлета: ${login}`);
                 res.json({ success: true, userId: result.insertId });
             });
         }
     });
 });
 
-// Дашборд: Отримання останнього запису
+// Отримання останнього запису для дашборду
 app.get('/api/dashboard/:id', (req, res) => {
     const sql = `
         SELECT u.login, h.* FROM users u 
@@ -106,50 +99,43 @@ app.get('/api/dashboard/:id', (req, res) => {
         WHERE u.id = ? 
         ORDER BY h.date_recorded DESC, h.id DESC 
         LIMIT 1`;
-
     db.query(sql, [req.params.id], (err, results) => {
         if (err) return res.status(500).send(err.message);
         res.json(results[0] || { login: "Спортсмен" });
     });
 });
 
-// Оновлення показників (Sync)
+// НОВИЙ МАРШРУТ ДЛЯ АРХІВУ (History)
+app.get('/api/history/:id', (req, res) => {
+    console.log(`📜 Запит історії для користувача ID: ${req.params.id}`);
+    const sql = "SELECT * FROM health_logs WHERE user_id = ? ORDER BY date_recorded DESC, id DESC";
+
+    db.query(sql, [req.params.id], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
+});
+
+// Оновлення даних
 app.post('/api/update', (req, res) => {
     const { userId, weight, height, steps, sleep, water, kcal, kcalTarget, bmi } = req.body;
     const today = new Date().toISOString().slice(0, 10);
-
-    console.log(`📊 Оновлення даних для UserID ${userId} на дату ${today}`);
 
     const sql = `
         INSERT INTO health_logs (user_id, weight, height, distance_km, sleep_hours, water_liters, calories_intake, kcal_target, date_recorded, bmi)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
         ON DUPLICATE KEY UPDATE 
-            weight=VALUES(weight), 
-            height=VALUES(height),
-            distance_km=VALUES(distance_km),
-            sleep_hours=VALUES(sleep_hours),
-            water_liters=VALUES(water_liters),
-            calories_intake=VALUES(calories_intake),
-            kcal_target=VALUES(kcal_target),
-            bmi=VALUES(bmi)`;
+            weight=VALUES(weight), height=VALUES(height), distance_km=VALUES(distance_km),
+            sleep_hours=VALUES(sleep_hours), water_liters=VALUES(water_liters),
+            calories_intake=VALUES(calories_intake), kcal_target=VALUES(kcal_target), bmi=VALUES(bmi)`;
 
     db.query(sql, [userId, weight, height, steps, sleep, water, kcal, kcalTarget, today, bmi], (err) => {
-        if (err) {
-            console.error('❌ ПОМИЛКА ОНОВЛЕННЯ ДАНИХ:', err.message);
-            return res.status(500).json({ error: err.message });
-        }
+        if (err) return res.status(500).json({ error: err.message });
         res.json({ status: "success" });
     });
 });
 
-// Запуск сервера
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-    console.log(`
-    ======================================
-    🚀 СЕРВЕР VitalSync ЖИВИЙ ТА ПРАЦЮЄ
-    📍 ПОРТ: ${PORT}
-    📡 СИСТЕМА ГОТОВА ДО ОБРОБКИ ДАНИХ
-    ======================================
-    `);
+    console.log(`🚀 СЕРВЕР VitalSync ЖИВИЙ НА ПОРТУ ${PORT}`);
 });
