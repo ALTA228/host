@@ -9,14 +9,14 @@ app.use(express.json());
 
 // Підключення до бази через змінні оточення або хардкод (якщо змінні не задані)
 const db = mysql.createConnection({
-    host: process.env.DB_HOST || 'vitalsync-db228-pohomov38-5ea8.h.aivencloud.com',
-    port: process.env.DB_PORT || 14787,
-    user: process.env.DB_USER || 'avnadmin',
-    password: process.env.DB_PASSWORD || 'AVNS_v4I6Upq_vHI7EXoiut2',
-    database: process.env.DB_NAME || 'defaultdb',
+    host: 'vitalsync-db228-pohomov38-5ea8.h.aivencloud.com',
+    port: 14787,
+    user: 'avnadmin',
+    password: 'AVNS_v4I6Upq_vHI7EXoiut2',
+    database: 'defaultdb',
     ssl: {
         rejectUnauthorized: false,
-        connectTimeout: 20000
+        connectTimeout: 25000
     },
     multipleStatements: true
 });
