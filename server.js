@@ -6,25 +6,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ÏĞßÌÅ Ï²ÄÊËŞ×ÅÍÍß ÁÅÇ ÇÌ²ÍÍÈÕ (Hardcoded äëÿ ñòàá³ëüíîñò³)
-const db = mysql.createConnection({
-    host: 'vitalsync-db228-pohomov38-5ea8.h.aivencloud.com',
-    port: 14787,
-    user: 'avnadmin',
-    password: 'AVNS_v4I6Upq_vHI7EXoiut2',
-    database: 'defaultdb',
-    ssl: {
-        rejectUnauthorized: false,
-        connectTimeout: 30000
-    },
-    multipleStatements: true
-});
+// Ï²ÄÊËŞ×ÅÍÍß ×ÅĞÅÇ URI (íàéñòàá³ëüí³øèé ìåòîä äëÿ Aiven)
+const connectionUri = "mysql://avnadmin:AVNS_v4I6Upq_vHI7EXoiut2@vitalsync-db228-pohomov38-5ea8.h.aivencloud.com:14787/defaultdb?ssl-mode=REQUIRED";
+
+const db = mysql.createConnection(connectionUri);
 
 db.connect(err => {
     if (err) {
         console.error('ÊĞÈÒÈ×ÍÀ ÏÎÌÈËÊÀ Ï²ÄÊËŞ×ÅÍÍß:', err.message);
     } else {
-        console.log('--- VitalSync Connected to Aiven Cloud ---');
+        console.log('--- VitalSync Connected to Aiven Cloud (via URI) ---');
 
         const initSql = `
         CREATE TABLE IF NOT EXISTS users (
