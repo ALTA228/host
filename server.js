@@ -54,11 +54,13 @@ db.connect(err => {
     }
 });
 
-// Твій маршрут реєстрації
 app.post('/api/register', (req, res) => {
     const { login, password } = req.body;
     db.query("SELECT * FROM users WHERE login = ?", [login], (err, results) => {
-        if (err) return res.status(500).json({ error: "DB Error" });
+        if (err) {
+            console.error('Помилка SELECT:', err);
+            return res.status(500).json({ error: "DB Error" });
+        }
         if (results.length > 0) {
             if (results[0].password === password) {
                 return res.json({ success: true, userId: results[0].id });
@@ -67,7 +69,10 @@ app.post('/api/register', (req, res) => {
             }
         } else {
             db.query("INSERT INTO users (login, password) VALUES (?, ?)", [login, password], (err, result) => {
-                if (err) return res.status(500).json({ error: "Create error" });
+                if (err) {
+                    console.error('Помилка INSERT:', err);
+                    return res.status(500).json({ error: "Create error" });
+                }
                 res.json({ success: true, userId: result.insertId });
             });
         }
@@ -94,5 +99,5 @@ app.post('/api/update', (req, res) => {
     });
 });
 
-const PORT = process.env.PORT || 10000; // Render любить порт 10000
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`Server on port ${PORT}`));
