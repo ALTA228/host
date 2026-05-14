@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Ï³äêëþ÷åííÿ ÷åðåç çì³íí³ Render (öå íàéíàä³éí³øå)
+// Ï³äêëþ÷åííÿ äî áàçè ÷åðåç çì³íí³ îòî÷åííÿ àáî õàðäêîä (ÿêùî çì³íí³ íå çàäàí³)
 const db = mysql.createConnection({
     host: process.env.DB_HOST || 'vitalsync-db228-pohomov38-5ea8.h.aivencloud.com',
     port: process.env.DB_PORT || 14787,
@@ -23,11 +23,10 @@ const db = mysql.createConnection({
 
 db.connect(err => {
     if (err) {
-        console.error('Ïîìèëêà ï³äêëþ÷åííÿ:', err);
+        console.error('ÊÐÈÒÈ×ÍÀ ÏÎÌÈËÊÀ Ï²ÄÊËÞ×ÅÍÍß:', err.message);
     } else {
-        console.log('Ï³äêëþ÷åíî äî õìàðíî¿ áàçè VitalSync íà Aiven');
+        console.log('--- VitalSync Connected to Aiven Cloud ---');
 
-        // Òâîÿ ëîã³êà ñòâîðåííÿ òàáëèöü
         const initSql = `
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -48,19 +47,23 @@ db.connect(err => {
         );`;
 
         db.query(initSql, (err) => {
-            if (err) console.error('Ïîìèëêà òàáëèöü:', err);
-            else console.log('Òàáëèö³ ãîòîâ³');
+            if (err) console.error('ÏÎÌÈËÊÀ ÑÒÂÎÐÅÍÍß ÒÀÁËÈÖÜ:', err.message);
+            else console.log('Ñòðóêòóðà áàçè äàíèõ ãîòîâà äî ðîáîòè');
         });
     }
 });
 
+// ÐÅªÑÒÐÀÖ²ß ÒÀ ËÎÃ²Í
 app.post('/api/register', (req, res) => {
     const { login, password } = req.body;
+    console.log(`Çàïèò íà ðåºñòðàö³þ: ${login}`);
+
     db.query("SELECT * FROM users WHERE login = ?", [login], (err, results) => {
         if (err) {
-            console.error('Ïîìèëêà SELECT:', err);
-            return res.status(500).json({ error: "DB Error" });
+            console.error('ÏÎÌÈËÊÀ ÏÐÈ SELECT:', err.sqlMessage);
+            return res.status(500).json({ error: "DB Error", details: err.sqlMessage });
         }
+
         if (results.length > 0) {
             if (results[0].password === password) {
                 return res.json({ success: true, userId: results[0].id });
@@ -70,34 +73,60 @@ app.post('/api/register', (req, res) => {
         } else {
             db.query("INSERT INTO users (login, password) VALUES (?, ?)", [login, password], (err, result) => {
                 if (err) {
-                    console.error('Ïîìèëêà INSERT:', err);
-                    return res.status(500).json({ error: "Create error" });
+                    console.error('ÏÎÌÈËÊÀ ÏÐÈ INSERT:', err.sqlMessage);
+                    return res.status(500).json({ error: "Create error", details: err.sqlMessage });
                 }
+                console.log(`Íîâèé êîðèñòóâà÷ ñòâîðåíèé: ${login}`);
                 res.json({ success: true, userId: result.insertId });
             });
         }
     });
 });
 
-// Äîäàé ö³ ìàðøðóòè, ùîá ïðàöþâàâ äàøáîðä ç³ ñêð³íøîòà image_aec798.png
+// ÄÀØÁÎÐÄ (Îñòàíí³ äàí³)
 app.get('/api/dashboard/:id', (req, res) => {
-    const sql = `SELECT u.login, h.* FROM users u LEFT JOIN health_logs h ON u.id = h.user_id WHERE u.id = ? ORDER BY h.id DESC LIMIT 1`;
+    const sql = `
+        SELECT u.login, h.* FROM users u 
+        LEFT JOIN health_logs h ON u.id = h.user_id 
+        WHERE u.id = ? 
+        ORDER BY h.date_recorded DESC, h.id DESC 
+        LIMIT 1`;
+
     db.query(sql, [req.params.id], (err, results) => {
-        if (err) return res.status(500).send(err);
-        res.json(results[0] || { login: "Not Found" });
+        if (err) {
+            console.error('ÏÎÌÈËÊÀ DASHBOARD:', err.sqlMessage);
+            return res.status(500).send(err.sqlMessage);
+        }
+        res.json(results[0] || { login: "User Not Found" });
     });
 });
 
+// ÎÍÎÂËÅÍÍß ÏÎÊÀÇÍÈÊ²Â
 app.post('/api/update', (req, res) => {
     const { userId, weight, height, steps, sleep, water, kcal, kcalTarget, bmi } = req.body;
     const today = new Date().toISOString().slice(0, 10);
-    const sql = `INSERT INTO health_logs (user_id, weight, height, distance_km, sleep_hours, water_liters, calories_intake, kcal_target, date_recorded, bmi)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE weight=VALUES(weight), bmi=VALUES(bmi)`;
+
+    const sql = `
+        INSERT INTO health_logs (user_id, weight, height, distance_km, sleep_hours, water_liters, calories_intake, kcal_target, date_recorded, bmi)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+        ON DUPLICATE KEY UPDATE 
+            weight=VALUES(weight), 
+            height=VALUES(height), 
+            distance_km=VALUES(distance_km),
+            sleep_hours=VALUES(sleep_hours),
+            water_liters=VALUES(water_liters),
+            calories_intake=VALUES(calories_intake),
+            kcal_target=VALUES(kcal_target),
+            bmi=VALUES(bmi)`;
+
     db.query(sql, [userId, weight, height, steps, sleep, water, kcal, kcalTarget, today, bmi], (err) => {
-        if (err) return res.status(500).json(err);
+        if (err) {
+            console.error('ÏÎÌÈËÊÀ UPDATE:', err.sqlMessage);
+            return res.status(500).json({ error: err.sqlMessage });
+        }
         res.json({ status: "success" });
     });
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Server on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
